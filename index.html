@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>诊断 №010 ／ 你的 AI 等级</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;0,9..144,900;1,9..144,300;1,9..144,500;1,9..144,700&family=IBM+Plex+Mono:wght@300;400;500;600&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1e9d8;
+    --paper-2:#ebe1cd;
+    --ink:#0a0908;
+    --ink-2:#221f1a;
+    --mute:#6f6553;
+    --rule:#0a0908;
+    --red:#d6361f;
+    --red-2:#a3220f;
+    --green:#1d4a2a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"IBM Plex Mono","Noto Serif SC",ui-monospace,monospace;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  /* paper grain */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.05  0 0 0 0 0.04  0 0 0 0 0.02  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.55'/></svg>");
+    opacity:.18;mix-blend-mode:multiply;
+  }
+  /* deckle edge */
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:2;
+    box-shadow:inset 0 0 120px rgba(20,12,4,.18);
+  }
+
+  .display{font-family:"Fraunces",ui-serif,Georgia,serif;font-variation-settings:"opsz" 144;letter-spacing:-.02em}
+  .display-it{font-family:"Fraunces",ui-serif,Georgia,serif;font-style:italic;font-variation-settings:"opsz" 144;letter-spacing:-.025em}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+  .cn{font-family:"Noto Serif SC","Fraunces",serif}
+
+  /* layout shell */
+  .shell{max-width:1240px;margin:0 auto;padding:36px 56px 80px;position:relative;z-index:3}
+  @media (max-width:760px){ .shell{padding:24px 22px 64px} }
+
+  /* masthead */
+  .masthead{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:14px;gap:24px;flex-wrap:wrap}
+  .masthead .mark{font-size:11px;letter-spacing:.22em;text-transform:uppercase}
+  .masthead .mark b{font-weight:600}
+  .masthead .right{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-2);text-align:right}
+  .masthead .right span{display:block;color:var(--mute)}
+  .double-rule{border-top:1px solid var(--ink);margin-top:4px}
+
+  /* hero */
+  .hero{padding:64px 0 28px;position:relative}
+  .kicker{display:flex;align-items:center;gap:14px;font-size:11px;letter-spacing:.28em;text-transform:uppercase;margin-bottom:36px}
+  .kicker .dot{width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.6);opacity:.55}}
+  .hero h1{
+    margin:0;
+    font-family:"Fraunces",serif;
+    font-variation-settings:"opsz" 144,"wght" 500;
+    font-size:clamp(64px,11.5vw,168px);
+    line-height:.88;letter-spacing:-.04em;
+    color:var(--ink);
+  }
+  .hero h1 em{font-style:italic;font-weight:300;color:var(--red);font-variation-settings:"opsz" 144,"wght" 300}
+  .hero .sub{
+    margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:32px;
+    border-top:1px solid var(--ink);padding-top:18px;
+  }
+  @media (max-width:760px){.hero .sub{grid-template-columns:1fr}}
+  .hero .sub p{margin:0;font-size:14px;line-height:1.7;color:var(--ink-2)}
+  .hero .sub p.lead{font-family:"Fraunces",serif;font-style:italic;font-size:20px;line-height:1.45;color:var(--ink);font-variation-settings:"opsz" 36,"wght" 400}
+
+  /* level rail */
+  .rail{
+    display:flex;flex-wrap:wrap;gap:0;margin:48px 0 24px;
+    border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);
+  }
+  .rail .rl{
+    flex:1;min-width:80px;padding:14px 10px;
+    border-right:1px dashed rgba(10,9,8,.25);
+    text-align:center;
+  }
+  .rail .rl:last-child{border-right:none}
+  .rail .rl .n{font-family:"Fraunces",serif;font-style:italic;font-size:22px;font-variation-settings:"opsz" 36,"wght" 500}
+  .rail .rl .l{display:block;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--mute);margin-top:4px}
+
+  /* CTA */
+  .start{
+    margin-top:38px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  }
+  .btn{
+    display:inline-flex;align-items:center;gap:12px;
+    padding:18px 28px;border:1.5px solid var(--ink);
+    background:var(--ink);color:var(--paper);
+    font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    cursor:pointer;border-radius:0;
+    transition:all .18s ease;
+  }
+  .btn:hover{background:var(--red);border-color:var(--red);transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}
+  .btn .arr{font-family:"Fraunces",serif;font-style:italic;font-size:18px;letter-spacing:0;transform:translateY(-1px)}
+  .start .hint{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+
+  /* ===== QUIZ ===== */
+  .quiz{display:none;padding-top:24px}
+  .quiz.on{display:block;animation:fadeIn .5s ease both}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+  .qhead{
+    display:flex;align-items:baseline;justify-content:space-between;
+    border-bottom:1.5px solid var(--ink);padding-bottom:8px;margin-top:8px;
+    font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  }
+  .qhead .progress{color:var(--mute)}
+  .qhead .progress b{color:var(--red);font-weight:600}
+
+  .barwrap{height:3px;background:rgba(10,9,8,.12);margin-top:10px;position:relative;overflow:hidden}
+  .barwrap .bar{position:absolute;left:0;top:0;bottom:0;background:var(--red);width:0;transition:width .5s cubic-bezier(.22,.61,.36,1)}
+
+  .qcard{padding:48px 0 24px;display:grid;grid-template-columns:120px 1fr;gap:36px;align-items:start}
+  @media (max-width:760px){.qcard{grid-template-columns:1fr;gap:18px}}
+  .qcard .roman{
+    font-family:"Fraunces",serif;font-style:italic;
+    font-size:84px;line-height:.85;color:var(--red);
+    font-variation-settings:"opsz" 144,"wght" 400;
+    border-right:1px solid var(--ink);padding-right:24px;
+  }
+  @media (max-width:760px){.qcard .roman{border-right:none;border-bottom:1px solid var(--ink);padding-bottom:8px;padding-right:0;font-size:64px}}
+  .qcard .tag{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--mute);margin-bottom:10px}
+  .qcard h2{
+    margin:0 0 18px;
+    font-family:"Fraunces",serif;font-variation-settings:"opsz" 72,"wght" 500;
+    font-size:clamp(26px,3.4vw,40px);line-height:1.18;letter-spacing:-.02em;
+  }
+  .qcard h2 em{font-style:italic;font-weight:300;color:var(--red-2)}
+  .qcard .hint{font-size:13px;line-height:1.65;color:var(--ink-2);margin:0 0 22px;max-width:62ch}
+  .qcard .hint::before{content:"※ ";color:var(--red)}
+
+  textarea.answer{
+    width:100%;min-height:200px;
+    background:transparent;
+    border:none;border-top:1px dashed rgba(10,9,8,.35);border-bottom:1px dashed rgba(10,9,8,.35);
+    padding:18px 4px;
+    font-family:"Noto Serif SC","Fraunces",serif;
+    font-size:17px;line-height:1.85;color:var(--ink);
+    resize:vertical;outline:none;
+    background-image:linear-gradient(to bottom, transparent 28px, rgba(10,9,8,.08) 29px, transparent 30px);
+    background-size:100% 30px;background-attachment:local;
+    caret-color:var(--red);
+  }
+  textarea.answer::placeholder{color:rgba(10,9,8,.32);font-style:italic}
+
+  .qfoot{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:16px;flex-wrap:wrap}
+  .qfoot .wc{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+  .qfoot .wc b{color:var(--ink);font-weight:600}
+  .qfoot .actions{display:flex;gap:10px}
+  .btn-ghost{
+    background:transparent;color:var(--ink);border:1px solid var(--ink);
+    padding:14px 22px;font-family:"IBM Plex Mono",monospace;
+    font-size:11px;letter-spacing:.22em;text-transform:uppercase;cursor:pointer;
+    transition:all .18s ease;
+  }
+  .btn-ghost:hover{background:var(--ink);color:var(--paper)}
+  .btn-ghost:disabled{opacity:.3;cursor:not-allowed}
+  .btn-red{background:var(--red);border:1.5px solid var(--red);color:var(--paper);padding:16px 28px;font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.22em;text-transform:uppercase;cursor:pointer;transition:all .18s ease}
+  .btn-red:hover{background:var(--red-2);border-color:var(--red-2);transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}
+  .btn-red:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+  /* ===== LOADING ===== */
+  .loading{display:none;padding:120px 0;text-align:center}
+  .loading.on{display:block}
+  .loading .spin{
+    font-family:"Fraunces",serif;font-style:italic;
+    font-size:42px;color:var(--ink);font-variation-settings:"opsz" 72,"wght" 400;
+  }
+  .loading .ticker{
+    margin-top:24px;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--mute);
+    min-height:18px;
+  }
+  .loading .ticker b{color:var(--red);font-weight:600}
+  .loading .dots::after{content:"";animation:dots 1.4s infinite steps(4,end)}
+  @keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}100%{content:""}}
+
+  /* ===== REPORT ===== */
+  .report{display:none}
+  .report.on{display:block;animation:fadeIn .8s ease both}
+
+  .rphead{border-top:2px solid var(--ink);border-bottom:1px solid var(--ink);padding:12px 0;display:flex;justify-content:space-between;font-size:11px;letter-spacing:.22em;text-transform:uppercase}
+  .stamp{
+    display:inline-block;border:2px solid var(--red);color:var(--red);
+    padding:4px 12px;font-size:10px;letter-spacing:.28em;text-transform:uppercase;
+    transform:rotate(-2deg);
+  }
+
+  .verdict{
+    padding:56px 0 24px;
+    display:grid;grid-template-columns:1.2fr 1fr;gap:48px;align-items:end;
+    border-bottom:1px solid var(--ink);
+  }
+  @media (max-width:880px){.verdict{grid-template-columns:1fr;gap:24px}}
+  .verdict .lvl-label{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--mute);margin-bottom:6px}
+  .verdict .lvl-num{
+    font-family:"Fraunces",serif;font-variation-settings:"opsz" 144,"wght" 500;
+    font-size:clamp(120px,22vw,260px);line-height:.84;letter-spacing:-.05em;
+    color:var(--ink);margin:0;
+  }
+  .verdict .lvl-num em{font-style:italic;font-weight:300;color:var(--red);font-variation-settings:"opsz" 144,"wght" 300}
+  .verdict .lvl-title{
+    font-family:"Noto Serif SC",serif;font-weight:700;
+    font-size:clamp(28px,4vw,44px);line-height:1.1;margin:8px 0 0;
+  }
+  .verdict .headline{
+    font-family:"Fraunces",serif;font-style:italic;
+    font-variation-settings:"opsz" 72,"wght" 400;
+    font-size:clamp(22px,2.6vw,32px);line-height:1.35;
+    color:var(--ink-2);max-width:32ch;
+  }
+  .verdict .headline::before{content:"“";color:var(--red);font-size:1.4em;line-height:0;vertical-align:-.25em;margin-right:6px}
+  .verdict .headline::after{content:"”";color:var(--red);font-size:1.4em;line-height:0;vertical-align:-.25em;margin-left:4px}
+
+  /* level ladder */
+  .ladder{margin:48px 0;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+  .ladder .row{
+    display:grid;grid-template-columns:60px 140px 1fr 80px;align-items:center;
+    padding:10px 4px;border-bottom:1px dashed rgba(10,9,8,.18);
+    font-size:13px;
+    transition:background .25s ease;
+  }
+  .ladder .row:last-child{border-bottom:none}
+  .ladder .row.cur{background:var(--ink);color:var(--paper)}
+  .ladder .row.cur .num{color:var(--red)}
+  .ladder .row.cur .pct{color:var(--paper)}
+  .ladder .row.past{opacity:.65}
+  .ladder .num{font-family:"Fraunces",serif;font-style:italic;font-size:20px;font-variation-settings:"opsz" 36,"wght" 500}
+  .ladder .name{font-family:"Noto Serif SC",serif;font-weight:700;font-size:15px}
+  .ladder .desc{color:inherit;opacity:.7;font-size:12px;line-height:1.5}
+  .ladder .row.cur .desc{opacity:.9}
+  .ladder .pct{text-align:right;font-size:11px;letter-spacing:.18em;color:var(--mute)}
+  @media (max-width:760px){
+    .ladder .row{grid-template-columns:40px 1fr 60px}
+    .ladder .desc{display:none}
+  }
+
+  /* analysis grid */
+  .analysis{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin:48px 0}
+  @media (max-width:760px){.analysis{grid-template-columns:1fr;gap:32px}}
+  .analysis h3{font-family:"Fraunces",serif;font-variation-settings:"opsz" 72,"wght" 500;font-size:24px;margin:0 0 4px;letter-spacing:-.01em}
+  .analysis h3 em{font-style:italic;color:var(--red)}
+  .analysis .sub{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute);margin-bottom:18px}
+  .analysis ul{list-style:none;padding:0;margin:0}
+  .analysis ul li{
+    padding:14px 0 14px 28px;border-bottom:1px dashed rgba(10,9,8,.2);
+    font-size:15px;line-height:1.55;position:relative;font-family:"Noto Serif SC",serif;
+  }
+  .analysis ul li::before{
+    position:absolute;left:0;top:14px;
+    font-family:"Fraunces",serif;font-style:italic;
+    color:var(--red);font-size:16px;
+  }
+  .analysis ul.strengths li::before{content:"+"}
+  .analysis ul.gaps li::before{content:"—";color:var(--ink)}
+
+  .verdict-block{padding:36px 0;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+  .verdict-block .lbl{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--mute);margin-bottom:14px}
+  .verdict-block p{
+    margin:0;font-family:"Noto Serif SC","Fraunces",serif;
+    font-size:18px;line-height:1.85;
+    column-count:2;column-gap:48px;
+  }
+  @media (max-width:760px){.verdict-block p{column-count:1}}
+  .verdict-block .next{
+    margin-top:28px;padding:20px 24px;border:1.5px solid var(--ink);
+    display:flex;gap:16px;align-items:flex-start;
+  }
+  .verdict-block .next .k{font-family:"Fraunces",serif;font-style:italic;color:var(--red);font-size:32px;line-height:1;flex-shrink:0;font-variation-settings:"opsz" 72,"wght" 500}
+  .verdict-block .next .v{font-family:"Noto Serif SC",serif;font-size:15px;line-height:1.65}
+  .verdict-block .next .v b{display:block;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute);margin-bottom:4px;font-weight:500;font-family:"IBM Plex Mono",monospace}
+
+  /* offline CTA */
+  .offline{
+    margin-top:64px;position:relative;
+    background:var(--ink);color:var(--paper);
+    padding:56px 48px;
+    overflow:hidden;
+  }
+  .offline::before{
+    content:"";position:absolute;inset:8px;border:1px solid rgba(241,233,216,.18);pointer-events:none;
+  }
+  @media (max-width:760px){.offline{padding:40px 24px}}
+  .offline .ohead{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap;margin-bottom:32px}
+  .offline .badge{
+    display:inline-block;border:1px solid var(--red);color:var(--red);
+    padding:4px 12px;font-size:10px;letter-spacing:.28em;text-transform:uppercase;
+  }
+  .offline .ono{font-family:"Fraunces",serif;font-style:italic;font-size:14px;color:rgba(241,233,216,.5)}
+  .offline h2{
+    margin:0;font-family:"Fraunces",serif;font-variation-settings:"opsz" 144,"wght" 500;
+    font-size:clamp(40px,7vw,84px);line-height:.95;letter-spacing:-.03em;
+  }
+  .offline h2 em{font-style:italic;font-weight:300;color:var(--red)}
+  .offline .leap{display:flex;align-items:center;gap:36px;margin-top:36px;flex-wrap:wrap}
+  .offline .leap .from,.offline .leap .to{font-family:"Fraunces",serif;font-style:italic;text-align:center}
+  .offline .leap .from .lv,.offline .leap .to .lv{font-size:64px;line-height:1;font-variation-settings:"opsz" 144,"wght" 500}
+  .offline .leap .from .lv{color:rgba(241,233,216,.4)}
+  .offline .leap .to .lv{color:var(--red)}
+  .offline .leap .from small,.offline .leap .to small{display:block;font-size:11px;letter-spacing:.22em;text-transform:uppercase;font-style:normal;font-family:"IBM Plex Mono",monospace;margin-top:6px;color:rgba(241,233,216,.6)}
+  .offline .leap .arrow{font-family:"Fraunces",serif;font-style:italic;font-size:48px;color:var(--red)}
+  .offline .pitch{margin-top:28px;font-family:"Noto Serif SC",serif;font-size:17px;line-height:1.75;max-width:62ch;color:rgba(241,233,216,.85)}
+  .offline .pitch em{font-style:italic;color:var(--red);font-family:"Fraunces",serif}
+  .offline .ofoot{margin-top:36px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  .btn-cream{
+    background:var(--paper);color:var(--ink);border:1.5px solid var(--paper);
+    padding:18px 28px;font-family:"IBM Plex Mono",monospace;
+    font-size:12px;letter-spacing:.22em;text-transform:uppercase;cursor:pointer;
+    transition:all .18s ease;
+  }
+  .btn-cream:hover{background:var(--red);color:var(--paper);border-color:var(--red);transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--paper)}
+  .offline .ofoot small{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(241,233,216,.5)}
+
+  .colophon{margin-top:64px;padding-top:18px;border-top:1px solid var(--ink);display:flex;justify-content:space-between;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute);flex-wrap:wrap;gap:8px}
+
+  /* error toast */
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+    background:var(--ink);color:var(--paper);padding:14px 22px;
+    font-size:12px;letter-spacing:.16em;z-index:9;display:none;
+  }
+  .toast.on{display:block;animation:fadeIn .25s ease}
+
+  /* misc */
+  .blink{animation:blink 1.2s infinite}
+  @keyframes blink{50%{opacity:.3}}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- MASTHEAD -->
+  <header class="masthead">
+    <div class="mark">
+      <b class="cn">瑶瑶 ／ AI 等级评估所</b> &nbsp;·&nbsp; YAO·DIAGNOSTIC INSTITUTE
+    </div>
+    <div class="right">
+      <span>FORM No. <b>010</b> &nbsp;·&nbsp; ED. 2026</span>
+      <span class="blink">●&nbsp; SUBJECT NOT YET ASSESSED</span>
+    </div>
+  </header>
+  <div class="double-rule"></div>
+
+  <!-- HERO -->
+  <section class="hero" id="hero">
+    <div class="kicker"><span class="dot"></span>诊断开始前 ／ INITIATING DIAGNOSTIC</div>
+
+    <h1>
+      你<em>在</em>哪<br>
+      一<em>级</em>？
+    </h1>
+
+    <div class="sub">
+      <p class="lead cn">
+        六道开放题。不是选择题，没法瞎蒙。<br>
+        答完看你卡在 AI 进化路径的哪一节台阶上。
+      </p>
+      <p class="cn">
+        全球还有约 <b>80%</b> 的人在 Lv.0；国内大多数自认为"用得挺好"的人，其实卡在 Lv.3。
+        这份诊断会告诉你：你真实在哪一级、卡你升级的是什么、下一步具体该做什么。
+        模型评分，不打分制，只看你思考的肌肉。
+      </p>
+    </div>
+
+    <!-- level rail -->
+    <div class="rail" aria-hidden="true">
+      <div class="rl"><div class="n">0</div><span class="l">旁观</span></div>
+      <div class="rl"><div class="n">1</div><span class="l">尝鲜</span></div>
+      <div class="rl"><div class="n">2</div><span class="l">对话</span></div>
+      <div class="rl"><div class="n">3</div><span class="l">驯化</span></div>
+      <div class="rl"><div class="n">4</div><span class="l">越境</span></div>
+      <div class="rl"><div class="n">5</div><span class="l">织网</span></div>
+      <div class="rl"><div class="n">6</div><span class="l">召唤</span></div>
+      <div class="rl"><div class="n">7</div><span class="l">铸造</span></div>
+      <div class="rl"><div class="n">8</div><span class="l">造物</span></div>
+      <div class="rl"><div class="n">9</div><span class="l">觉醒</span></div>
+      <div class="rl"><div class="n">10</div><span class="l">军团</span></div>
+    </div>
+
+    <div class="start">
+      <button class="btn" id="startBtn">开始诊断 &nbsp;<span class="arr">↓</span></button>
+      <span class="hint">大约 8 分钟 ／ 答题越具体，评级越准</span>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="quiz" id="quiz">
+    <div class="qhead">
+      <span>诊断进行中 ／ DIAGNOSTIC IN PROGRESS</span>
+      <span class="progress">问题 <b id="qIdx">1</b> ／ <span id="qTot">6</span></span>
+    </div>
+    <div class="barwrap"><div class="bar" id="bar"></div></div>
+
+    <div id="qCard"></div>
+
+    <div class="qfoot">
+      <div class="wc">已写 <b id="wc">0</b> 字</div>
+      <div class="actions">
+        <button class="btn-ghost" id="prevBtn" disabled>← 上一题</button>
+        <button class="btn-red" id="nextBtn">下一题 →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOADING -->
+  <section class="loading" id="loading">
+    <div class="spin">正在为你出具诊断书<span class="dots"></span></div>
+    <div class="ticker" id="ticker">读取作答 · 调用模型 · 评估等级</div>
+  </section>
+
+  <!-- REPORT -->
+  <section class="report" id="report">
+    <div class="rphead">
+      <span>诊断报告 ／ DIAGNOSTIC REPORT</span>
+      <span class="stamp">已签发 · ISSUED</span>
+    </div>
+
+    <div class="verdict">
+      <div>
+        <div class="lvl-label">YOUR LEVEL ／ 你的等级</div>
+        <div class="lvl-num">Lv.<em id="rLvl">?</em></div>
+        <div class="lvl-title cn" id="rTitle">—</div>
+      </div>
+      <div class="headline cn" id="rHeadline">—</div>
+    </div>
+
+    <div class="ladder" id="ladder"></div>
+
+    <div class="analysis">
+      <div>
+        <h3>你的<em>闪光点</em></h3>
+        <div class="sub">STRENGTHS · 这些做对了</div>
+        <ul class="strengths" id="rStrengths"></ul>
+      </div>
+      <div>
+        <h3>卡住你的<em>东西</em></h3>
+        <div class="sub">GAPS · 不动这里就升不了级</div>
+        <ul class="gaps" id="rGaps"></ul>
+      </div>
+    </div>
+
+    <div class="verdict-block">
+      <div class="lbl">完整诊断 ／ FULL VERDICT</div>
+      <p id="rVerdict">—</p>
+      <div class="next">
+        <div class="k">→</div>
+        <div class="v">
+          <b>NEXT STEP · 只做一件事</b>
+          <span id="rNext">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- OFFLINE CTA -->
+    <div class="offline">
+      <div class="ohead">
+        <span class="badge">特别通道 · SHORTCUT</span>
+        <span class="ono">№ <b>006</b></span>
+      </div>
+      <h2>跳过<em>四级</em>台阶<br>直接抵达<em>召唤师</em></h2>
+
+      <div class="leap">
+        <div class="from"><div class="lv" id="leapFrom">?</div><small>当前</small></div>
+        <div class="arrow">⤳</div>
+        <div class="to"><div class="lv">6</div><small>三天后</small></div>
+      </div>
+
+      <p class="pitch cn">
+        靠自学从 Lv.3 爬到 Lv.6，大多数人卡 <em>6–12 个月</em>。<br>
+        瑶瑶的<em>线下课</em>把这条路压缩成 3 天 ——
+        Claude Code、MCP、Skills、Agent 工作流，一次性给你装上手、做出第一个属于你自己的小产品。
+        课后你就是<em>那 3% 的人</em>。
+      </p>
+
+      <div class="ofoot">
+        <button class="btn-cream" id="ctaBtn">了解线下课 &nbsp;→</button>
+        <small>名额有限 ／ 每期 12 人</small>
+      </div>
+    </div>
+
+    <div style="margin-top:36px;display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn-ghost" id="retryBtn">重新答题</button>
+      <button class="btn-ghost" id="shareBtn">复制我的结果</button>
+    </div>
+
+    <div class="colophon">
+      <span>评估引擎 · MINO API · gpt-class</span>
+      <span>© <span class="cn">瑶瑶 AI 工作室</span> · 2026</span>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ========== CONFIG ========== */
+/* MiMo（小米 mimo）官方 API：
+   端点 https://api.xiaomimimo.com/v1/chat/completions
+   鉴权头 api-key: sk-...  （不是 Authorization: Bearer）
+   docs: https://platform.xiaomimimo.com/docs/zh-CN/api/chat/openai-api */
+const CFG = {
+  apiKey: "sk-cyqq2h3frdo61zh55izvedrugukokju62ys7bq1mfuwrc243",
+  endpoint: "https://api.xiaomimimo.com/v1/chat/completions",
+  model: "mimo-v2.5",
+};
+
+/* ========== QUESTIONS ========== */
+const QS = [
+  {
+    tag: "I · 基础提问",
+    title: "老板甩给你一句：「下周给客户做个汇报。」<em>你打算怎么向 AI 提问？</em>",
+    hint: "请把你完整的 prompt 写出来 —— 不是写汇报内容本身。我们想看的是：你会问什么、补充哪些背景、设定哪些约束。",
+    placeholder: "例：你是一位资深咨询顾问，我需要……（请把整条 prompt 写出来）",
+  },
+  {
+    tag: "II · 控制力",
+    title: "AI 给你一份听起来权威、但你怀疑<em>数据是编的</em>报告。",
+    hint: "请按顺序写出你接下来要做的三件事。越具体越好，最好能直接抄进 prompt。",
+    placeholder: "1. 我会……\n2. 然后……\n3. 最后……",
+  },
+  {
+    tag: "III · 跨界使用",
+    title: "请讲一个<em>你自己（或身边人）</em>用 AI 完成了「本来需要专业人士」的事。",
+    hint: "任务是什么？用了哪个工具？产出大概什么样？如果没有真实案例，请如实写「没有」，不要编。",
+    placeholder: "比如：我做市场，但用 AI 写了一段 Python 把后台导出的 csv 自动……",
+  },
+  {
+    tag: "IV · 工作流",
+    title: "设计一条「<em>竞品周报</em>」AI 工作流。",
+    hint: "每周监控 5 个竞品的官网/公众号/小红书更新，整理成 2 页文档。请写出至少 3 个步骤，并标出每一步交给「人 / 哪种 AI / 哪种工具」。",
+    placeholder: "Step 1（工具：xxx）：……\nStep 2（人 + AI）：……\nStep 3：……",
+  },
+  {
+    tag: "V · Agent 认知",
+    title: "<em>ChatBot 和 Agent</em> 的本质区别是什么？",
+    hint: "请举一个「只有 Agent 能做、ChatBot 无论 prompt 写得多好都做不了」的具体任务，并解释为什么。",
+    placeholder: "本质区别在于……\n例子：……\n原因：……",
+  },
+  {
+    tag: "VI · 创造者",
+    title: "如果让你为自己封装<em>一个 Skill</em>（可复用的 AI 能力模块），你会做什么？",
+    hint: "请回答：解决你什么具体问题、输入是什么、输出是什么、AI 在里面承担什么角色。允许「我不知道什么是 Skill」这个答案。",
+    placeholder: "我会做一个 xxx Skill：\n- 解决：……\n- 输入：……\n- 输出：……\n- AI 角色：……",
+  },
+];
+
+const LEVELS = [
+  ["旁观者", "从未跟AI对过话"],
+  ["尝鲜者", "AI 给啥用啥，不追问"],
+  ["对话者", "会追问，知道 prompt 这个词"],
+  ["驯化师", "主动给 AI 立规矩，工具栈分化"],
+  ["越境者", "用 AI 做专业之外的事"],
+  ["织网者", "AI 嵌入工作流，有 prompt 模板库"],
+  ["召唤师", "跨过 ChatBot→Agent 这道门"],
+  ["铸造师", "自己设计 Skill 和 Agent"],
+  ["造物主", "AI 是工作方式本身"],
+  ["觉醒者", "AI 是思维方式的一部分"],
+  ["一人军团", "一个人 = 一支队伍"],
+];
+const LEVEL_PCT = ["80%","60%","50%","30%","10%","6%","3%","1%","<1%","0.1%","0.01%"];
+
+/* ========== STATE ========== */
+const state = { i:0, answers: Array(QS.length).fill("") };
+
+/* ========== ELEMENTS ========== */
+const $ = id => document.getElementById(id);
+const heroEl = $("hero"), quizEl = $("quiz"), loadEl = $("loading"), reportEl = $("report");
+
+/* ========== INTERACTIONS ========== */
+$("startBtn").addEventListener("click", startQuiz);
+
+function startQuiz(){
+  heroEl.style.display = "none";
+  quizEl.classList.add("on");
+  renderQ();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function renderQ(){
+  const q = QS[state.i];
+  $("qIdx").textContent = state.i + 1;
+  $("qTot").textContent = QS.length;
+  $("bar").style.width = ((state.i) / QS.length * 100) + "%";
+
+  $("qCard").innerHTML = `
+    <div class="qcard">
+      <div class="roman">${roman(state.i+1)}</div>
+      <div>
+        <div class="tag">${q.tag}</div>
+        <h2>${q.title}</h2>
+        <p class="hint">${q.hint}</p>
+        <textarea class="answer" id="ans" placeholder="${q.placeholder.replace(/"/g,'&quot;')}"></textarea>
+      </div>
+    </div>
+  `;
+  const ta = $("ans");
+  ta.value = state.answers[state.i] || "";
+  updateWC();
+  ta.addEventListener("input", () => {
+    state.answers[state.i] = ta.value;
+    updateWC();
+  });
+  ta.focus();
+
+  $("prevBtn").disabled = state.i === 0;
+  $("nextBtn").textContent = state.i === QS.length - 1 ? "提交答卷 →" : "下一题 →";
+}
+
+function updateWC(){
+  $("wc").textContent = (state.answers[state.i] || "").trim().length;
+}
+
+function roman(n){
+  return ["Ⅰ","Ⅱ","Ⅲ","Ⅳ","Ⅴ","Ⅵ","Ⅶ","Ⅷ","Ⅸ","Ⅹ"][n-1] || String(n);
+}
+
+$("prevBtn").addEventListener("click", () => {
+  if (state.i > 0){ state.i--; renderQ(); }
+});
+
+$("nextBtn").addEventListener("click", async () => {
+  const cur = (state.answers[state.i] || "").trim();
+  if (cur.length < 8){
+    toast("再认真一点 —— 至少写两句话再下一题");
+    return;
+  }
+  if (state.i < QS.length - 1){
+    state.i++; renderQ();
+    window.scrollTo({top:quizEl.offsetTop - 20, behavior:"smooth"});
+  } else {
+    await submit();
+  }
+});
+
+/* ========== SUBMIT ========== */
+async function submit(){
+  quizEl.classList.remove("on");
+  loadEl.classList.add("on");
+  window.scrollTo({top:0,behavior:"smooth"});
+  rotateTicker();
+
+  try{
+    const result = await gradeWithAPI();
+    loadEl.classList.remove("on");
+    renderReport(result);
+  } catch (err){
+    console.error(err);
+    // 兜底：本地启发式评估
+    const result = heuristicGrade();
+    result._fallback = true;
+    loadEl.classList.remove("on");
+    renderReport(result);
+    toast("模型连接失败 · 已切换本地评估模式");
+  }
+}
+
+let tickIv;
+function rotateTicker(){
+  const steps = [
+    "读取作答 · LOADING ANSWERS",
+    "调用 mino 模型 · CALLING MODEL",
+    "比对 10 级评估框架 · MATCHING RUBRIC",
+    "撰写诊断报告 · WRITING VERDICT"
+  ];
+  let i = 0;
+  $("ticker").innerHTML = "<b>" + steps[0] + "</b>";
+  clearInterval(tickIv);
+  tickIv = setInterval(() => {
+    i = (i+1) % steps.length;
+    $("ticker").innerHTML = "<b>" + steps[i] + "</b>";
+  }, 1600);
+}
+
+async function gradeWithAPI(){
+  const sys = `你是「AI 能力等级评估官」，基于以下 11 级模型对用户作答给出严格评级。
+
+Lv.0 旁观者：从未跟AI对过话
+Lv.1 尝鲜者：来什么用什么，不追问、不补背景
+Lv.2 对话者：会追问，知道prompt概念，会说"你的角色是…"
+Lv.3 驯化师：主动给AI立规矩，写结构化prompt，工具栈分化（Kimi/DeepSeek/豆包各司其职）
+Lv.4 越境者：用AI做自己专业之外的事，工具栈5-10个，开始付费
+Lv.5 织网者：AI嵌入工作流，有prompt模板库，会为不同事建项目/知识库
+Lv.6 召唤师：跨过ChatBot到Agent的门，用Claude Code/Cursor等Agent工具，懂MCP/Skills概念，做出过完整小产品
+Lv.7 铸造师：自己设计Skill和Agent，会做AI反馈循环，重构自己的基础设施
+Lv.8 造物主：技术或艺术深度创造者，AI是工作方式本身
+Lv.9 觉醒者：AI是思维方式的一部分
+Lv.10 一人军团：一个人=一个团队的产出
+
+评级原则：
+- 看用户答案的"控制力 / 广度 / Agent认知 / 创造意识"四个维度
+- 答得空、答非所问、明显是 Lv.1-2 的痕迹（如「我会让AI帮我写」就直接交付）→ 低分
+- 用了"约束"、"角色"、"上下文"、"few-shot"、"模板" 等词且有具体例子 → Lv.3
+- 提到"工作流/流水线/项目/知识库/Context Engineering" → Lv.4-5
+- 提到"Agent / MCP / Skill / Claude Code / 工具调用 / 自己做了产品" → Lv.6+
+- 提到"自己设计Skill、反馈循环、基础设施" → Lv.7+
+- 别客气，别给情绪分。锋芒一点，说实话。
+- 大多数中文用户实际在 Lv.2-Lv.4 之间，少数到 Lv.5。请按答案实事求是给。
+
+严格用 JSON 输出，不要任何额外说明、不要markdown代码块标记：
+{
+  "level": 0-10的整数,
+  "title": "等级名（如「驯化师」）",
+  "headline": "一句话定位，30字内，有锋芒不要客套",
+  "strengths": ["闪光点1（具体到答案里的某个表述）", "闪光点2"],
+  "gaps": ["卡住你升级的关键缺口1", "缺口2", "缺口3"],
+  "next_step": "如果只做一件事跨入下一级，做什么（具体到动作）",
+  "verdict": "120-180字诊断，第二人称，有立场不废话，可以挖苦但要真诚"
+}`;
+
+  const user = "用户对6道题的作答：\n\n" + QS.map((q,i) =>
+    `【${q.tag}】\n问题：${stripHtml(q.title)}\n作答：\n${state.answers[i] || "（未作答）"}`
+  ).join("\n\n---\n\n");
+
+  const r = await fetch(CFG.endpoint, {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "api-key": CFG.apiKey
+    },
+    body: JSON.stringify({
+      model: CFG.model,
+      messages:[ {role:"system", content:sys}, {role:"user", content:user} ],
+      temperature: 0.5,
+      max_tokens: 4096,
+      response_format: { type: "json_object" }
+    })
+  });
+  if (!r.ok){
+    const t = await r.text().catch(()=>String(r.status));
+    throw new Error("API " + r.status + ": " + t.slice(0,200));
+  }
+  const j = await r.json();
+  const msg = j.choices?.[0]?.message || {};
+  // mimo-v2.5 是推理模型：先在 reasoning_content 里思考，再在 content 输出 JSON
+  const txt = msg.content || msg.reasoning_content || "";
+  const parsed = extractJSON(txt);
+  if (!parsed || typeof parsed.level !== "number") throw new Error("bad json from model");
+  return parsed;
+}
+
+function extractJSON(s){
+  try{ return JSON.parse(s); }catch(_){}
+  const m = s.match(/\{[\s\S]*\}/);
+  if (m){ try{ return JSON.parse(m[0]); }catch(_){} }
+  return null;
+}
+
+function stripHtml(s){ return (s||"").replace(/<[^>]+>/g,""); }
+
+/* heuristic fallback */
+function heuristicGrade(){
+  const all = state.answers.join(" \n ").toLowerCase();
+  const len = all.length;
+  let score = 1;
+  if (len > 80) score = 2;
+  if (/角色|约束|上下文|prompt|提示词/.test(all)) score = Math.max(score, 3);
+  if (/工具栈|不同模型|kimi|deepseek|豆包|联网/.test(all)) score = Math.max(score, 3);
+  if (/跨界|专业之外|本来不会|不是.*领域/.test(all)) score = Math.max(score, 4);
+  if (/工作流|流水线|模板|知识库|项目|context/.test(all)) score = Math.max(score, 5);
+  if (/agent|claude code|cursor|mcp|skill|工具调用/.test(all)) score = Math.max(score, 6);
+  if (/反馈循环|封装|自己设计|基础设施/.test(all)) score = Math.max(score, 7);
+  return {
+    level: score,
+    title: LEVELS[score][0],
+    headline: "本地兜底评估，建议刷新后让模型评。",
+    strengths: ["答得不算敷衍，至少写出了思考过程"],
+    gaps: ["模型 API 没连上，无法做精细评估", "建议手动检查你的答案是否触及 Agent / Skill / 工作流这些概念"],
+    next_step: "刷新页面，让模型重新评一次；如果反复失败，把答案发给瑶瑶人工评。",
+    verdict: "因网络/接口原因，这次没拿到模型的评分。给你的临时定位仅基于关键词匹配，参考价值有限。建议你检查 API key 或网络代理后重试一次。",
+  };
+}
+
+/* ========== REPORT ========== */
+function renderReport(r){
+  reportEl.classList.add("on");
+  const lvl = clamp(parseInt(r.level), 0, 10);
+  $("rLvl").textContent = lvl;
+  $("rTitle").textContent = (r.title || LEVELS[lvl][0]);
+  $("rHeadline").textContent = r.headline || "—";
+  $("rVerdict").textContent = r.verdict || "—";
+  $("rNext").textContent = r.next_step || "—";
+
+  $("rStrengths").innerHTML = (r.strengths||[]).map(s => `<li>${escapeHtml(s)}</li>`).join("") || "<li>—</li>";
+  $("rGaps").innerHTML = (r.gaps||[]).map(s => `<li>${escapeHtml(s)}</li>`).join("") || "<li>—</li>";
+
+  // ladder
+  $("ladder").innerHTML = LEVELS.map((L,i) => {
+    const cls = i === lvl ? "cur" : (i < lvl ? "past" : "");
+    return `<div class="row ${cls}">
+      <div class="num">${i}</div>
+      <div class="name">${L[0]}</div>
+      <div class="desc">${L[1]}</div>
+      <div class="pct">超越 ${LEVEL_PCT[i]}</div>
+    </div>`;
+  }).join("");
+
+  $("leapFrom").textContent = lvl;
+
+  // store last
+  window._lastResult = r;
+  window.scrollTo({top:reportEl.offsetTop - 12, behavior:"smooth"});
+}
+
+function escapeHtml(s){return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function clamp(n,a,b){n=isFinite(n)?n:0;return Math.max(a,Math.min(b,n))}
+
+/* ========== UI extras ========== */
+$("retryBtn").addEventListener("click", () => {
+  state.i = 0;
+  state.answers = Array(QS.length).fill("");
+  reportEl.classList.remove("on");
+  heroEl.style.display = "block";
+  window.scrollTo({top:0,behavior:"smooth"});
+});
+
+$("shareBtn").addEventListener("click", () => {
+  const r = window._lastResult; if (!r) return;
+  const t = `我刚做完了「你在AI哪一级？」诊断。\n等级：Lv.${r.level} ${r.title}\n${r.headline}\n\n下一步：${r.next_step}\n\n你也来测一下 →`;
+  navigator.clipboard.writeText(t).then(() => toast("已复制到剪贴板"));
+});
+
+$("ctaBtn").addEventListener("click", () => {
+  toast("已记录，瑶瑶团队会与你联系（演示按钮）");
+});
+
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(window._tt);
+  window._tt = setTimeout(() => t.classList.remove("on"), 2400);
+}
+
+/* keyboard */
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && heroEl.style.display !== "none"){
+    e.preventDefault(); startQuiz();
+  }
+  if ((e.metaKey||e.ctrlKey) && e.key === "Enter" && quizEl.classList.contains("on")){
+    e.preventDefault(); $("nextBtn").click();
+  }
+});
+</script>
+
+</body>
+</html>

@@ -569,10 +569,9 @@ const CFG = {
   model: "mimo-v2.5",
 };
 
-/* 飞书多维表格后端配置（裸前端方案，App Secret 暴露在前端，仅低风险场景使用） */
+/* 飞书多维表格后端（走 Cloudflare Worker 代理，绕过浏览器 CORS） */
 const FS = {
-  appId: "cli_a94d047cee381bc2",
-  appSecret: "vCylKSZ5XQQKuOdChypE8dHvvXLbGRgG",
+  proxy: "https://feishu-bitable-proxy.chenyao1840.workers.dev",
   baseToken: "ZkaHbH4LbaUMz1sOol6cJAmYnqG",
   tableAnswers: "tbludiEquMTY3Cai", // 答题记录
   tableLeads:   "tbliHDcZFD2gJ8uH", // 留资
@@ -637,34 +636,15 @@ const LEVEL_PCT = ["80%","60%","50%","30%","10%","6%","3%","1%","<1%","0.1%","0.
 /* ========== STATE ========== */
 const state = { i:0, answers: Array(QS.length).fill(""), recordUUID: null };
 
-/* ========== 飞书 API ========== */
-let _fsTokenCache = { token:null, exp:0 };
-async function fsToken(){
-  const now = Date.now();
-  if (_fsTokenCache.token && _fsTokenCache.exp - now > 60_000) return _fsTokenCache.token;
-  const r = await fetch("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal", {
+/* ========== 飞书 API（走 Worker 代理） ========== */
+async function fsAddRecord(tableId, fields){
+  const r = await fetch(`${FS.proxy}/record`, {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ app_id: FS.appId, app_secret: FS.appSecret })
+    body: JSON.stringify({ base: FS.baseToken, table: tableId, fields })
   });
   const j = await r.json();
-  if (j.code !== 0 || !j.tenant_access_token) throw new Error("feishu token: " + (j.msg||r.status));
-  _fsTokenCache = { token: j.tenant_access_token, exp: now + (j.expire||7200)*1000 };
-  return _fsTokenCache.token;
-}
-
-async function fsAddRecord(tableId, fields){
-  const token = await fsToken();
-  const r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${FS.baseToken}/tables/${tableId}/records`, {
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify({ fields })
-  });
-  const j = await r.json();
-  if (j.code !== 0) throw new Error("feishu write: [" + j.code + "] " + j.msg);
+  if (j.code !== 0) throw new Error("feishu write: [" + j.code + "] " + (j.msg||j.error||"unknown"));
   return j.data?.record;
 }
 

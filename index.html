@@ -328,6 +328,35 @@
 
   .colophon{margin-top:64px;padding-top:18px;border-top:1px solid var(--ink);display:flex;justify-content:space-between;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute);flex-wrap:wrap;gap:8px}
 
+  /* CTA modal */
+  .modal-mask{
+    position:fixed;inset:0;background:rgba(10,9,8,.55);z-index:50;
+    display:none;align-items:center;justify-content:center;padding:24px;
+  }
+  .modal-mask.on{display:flex;animation:fadeIn .25s ease}
+  .modal{
+    background:var(--paper);max-width:520px;width:100%;padding:40px 36px;
+    border:1.5px solid var(--ink);position:relative;
+  }
+  .modal::before{content:"";position:absolute;inset:8px;border:1px solid rgba(10,9,8,.18);pointer-events:none}
+  .modal h3{
+    margin:0 0 6px;font-family:"Fraunces",serif;font-variation-settings:"opsz" 72,"wght" 500;
+    font-size:28px;letter-spacing:-.01em;
+  }
+  .modal h3 em{font-style:italic;color:var(--red)}
+  .modal .msub{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute);margin-bottom:24px}
+  .modal label{display:block;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-2);margin:14px 0 6px}
+  .modal input,.modal textarea{
+    width:100%;background:transparent;border:none;border-bottom:1px solid var(--ink);
+    padding:8px 2px;font-family:"Noto Serif SC","IBM Plex Mono",monospace;font-size:15px;
+    color:var(--ink);outline:none;resize:vertical;
+  }
+  .modal input:focus,.modal textarea:focus{border-bottom-color:var(--red)}
+  .modal textarea{min-height:72px;line-height:1.6}
+  .modal .mfoot{display:flex;gap:10px;margin-top:28px;justify-content:flex-end}
+  .modal .mclose{position:absolute;top:14px;right:18px;background:none;border:none;font-family:"Fraunces",serif;font-style:italic;font-size:22px;color:var(--ink);cursor:pointer;line-height:1}
+  .modal .mclose:hover{color:var(--red)}
+
   /* error toast */
   .toast{
     position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
@@ -507,6 +536,25 @@
 
 </div>
 
+<!-- CTA MODAL -->
+<div class="modal-mask" id="ctaModal">
+  <div class="modal">
+    <button class="mclose" id="ctaClose" aria-label="关闭">×</button>
+    <h3>留个<em>联系方式</em></h3>
+    <div class="msub">瑶瑶团队会与你联系 · 线下课名额有限</div>
+    <label>姓名 *</label>
+    <input type="text" id="ctaName" placeholder="怎么称呼你" maxlength="30" />
+    <label>联系方式 *</label>
+    <input type="text" id="ctaContact" placeholder="微信号 / 手机号 / 邮箱" maxlength="50" />
+    <label>想了解什么（可选）</label>
+    <textarea id="ctaNote" placeholder="比如：开课时间、价格、是否适合零基础……" maxlength="300"></textarea>
+    <div class="mfoot">
+      <button class="btn-ghost" id="ctaCancel">取消</button>
+      <button class="btn-red" id="ctaSubmit">提交</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -519,6 +567,16 @@ const CFG = {
   apiKey: "sk-cyqq2h3frdo61zh55izvedrugukokju62ys7bq1mfuwrc243",
   endpoint: "https://api.xiaomimimo.com/v1/chat/completions",
   model: "mimo-v2.5",
+};
+
+/* 飞书多维表格后端配置（裸前端方案，App Secret 暴露在前端，仅低风险场景使用） */
+const FS = {
+  appId: "cli_a94d047cee381bc2",
+  appSecret: "vCylKSZ5XQQKuOdChypE8dHvvXLbGRgG",
+  baseToken: "ZkaHbH4LbaUMz1sOol6cJAmYnqG",
+  tableAnswers: "tbludiEquMTY3Cai", // 答题记录
+  tableLeads:   "tbliHDcZFD2gJ8uH", // 留资
+  source: "AI 等级测试 v2",
 };
 
 /* ========== QUESTIONS ========== */
@@ -577,7 +635,43 @@ const LEVELS = [
 const LEVEL_PCT = ["80%","60%","50%","30%","10%","6%","3%","1%","<1%","0.1%","0.01%"];
 
 /* ========== STATE ========== */
-const state = { i:0, answers: Array(QS.length).fill("") };
+const state = { i:0, answers: Array(QS.length).fill(""), recordUUID: null };
+
+/* ========== 飞书 API ========== */
+let _fsTokenCache = { token:null, exp:0 };
+async function fsToken(){
+  const now = Date.now();
+  if (_fsTokenCache.token && _fsTokenCache.exp - now > 60_000) return _fsTokenCache.token;
+  const r = await fetch("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ app_id: FS.appId, app_secret: FS.appSecret })
+  });
+  const j = await r.json();
+  if (j.code !== 0 || !j.tenant_access_token) throw new Error("feishu token: " + (j.msg||r.status));
+  _fsTokenCache = { token: j.tenant_access_token, exp: now + (j.expire||7200)*1000 };
+  return _fsTokenCache.token;
+}
+
+async function fsAddRecord(tableId, fields){
+  const token = await fsToken();
+  const r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${FS.baseToken}/tables/${tableId}/records`, {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify({ fields })
+  });
+  const j = await r.json();
+  if (j.code !== 0) throw new Error("feishu write: [" + j.code + "] " + j.msg);
+  return j.data?.record;
+}
+
+function uuid(){
+  if (crypto.randomUUID) return crypto.randomUUID();
+  return "r-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10);
+}
 
 /* ========== ELEMENTS ========== */
 const $ = id => document.getElementById(id);
@@ -658,6 +752,8 @@ async function submit(){
 
   try{
     const result = await gradeWithAPI();
+    // 写入飞书「答题记录」（失败不阻塞报告渲染）
+    saveAnswersToFeishu(result).catch(e => console.warn("feishu save failed:", e));
     loadEl.classList.remove("on");
     renderReport(result);
   } catch (err){
@@ -787,6 +883,46 @@ function heuristicGrade(){
   };
 }
 
+async function saveAnswersToFeishu(r){
+  const rid = uuid();
+  state.recordUUID = rid;
+  const lvl = clamp(parseInt(r.level), 0, 10);
+  const fields = {
+    "提交时间": Date.now(),
+    "等级": lvl,
+    "等级名": String(r.title || LEVELS[lvl][0] || ""),
+    "一句话定位": String(r.headline || ""),
+    "完整诊断": String(r.verdict || ""),
+    "闪光点": (r.strengths||[]).map(s => "· " + s).join("\n"),
+    "缺口": (r.gaps||[]).map(s => "· " + s).join("\n"),
+    "下一步": String(r.next_step || ""),
+    "答题1_基础提问": state.answers[0] || "",
+    "答题2_控制力":   state.answers[1] || "",
+    "答题3_跨界使用": state.answers[2] || "",
+    "答题4_工作流":   state.answers[3] || "",
+    "答题5_Agent认知":state.answers[4] || "",
+    "答题6_创造者":   state.answers[5] || "",
+    "来源": FS.source,
+    "记录ID": rid,
+  };
+  await fsAddRecord(FS.tableAnswers, fields);
+}
+
+async function saveLeadToFeishu({ name, contact, note }){
+  const r = window._lastResult || {};
+  const lvl = clamp(parseInt(r.level), 0, 10);
+  const fields = {
+    "提交时间": Date.now(),
+    "姓名": name,
+    "联系方式": contact,
+    "备注": note || "",
+    "等级": lvl,
+    "等级名": String(r.title || LEVELS[lvl] && LEVELS[lvl][0] || ""),
+    "关联记录ID": state.recordUUID || "",
+  };
+  await fsAddRecord(FS.tableLeads, fields);
+}
+
 /* ========== REPORT ========== */
 function renderReport(r){
   reportEl.classList.add("on");
@@ -836,8 +972,41 @@ $("shareBtn").addEventListener("click", () => {
   navigator.clipboard.writeText(t).then(() => toast("已复制到剪贴板"));
 });
 
-$("ctaBtn").addEventListener("click", () => {
-  toast("已记录，瑶瑶团队会与你联系（演示按钮）");
+/* CTA modal */
+const ctaModal = $("ctaModal");
+function openCta(){
+  $("ctaName").value = "";
+  $("ctaContact").value = "";
+  $("ctaNote").value = "";
+  ctaModal.classList.add("on");
+  setTimeout(() => $("ctaName").focus(), 50);
+}
+function closeCta(){ ctaModal.classList.remove("on"); }
+
+$("ctaBtn").addEventListener("click", openCta);
+$("ctaClose").addEventListener("click", closeCta);
+$("ctaCancel").addEventListener("click", closeCta);
+ctaModal.addEventListener("click", e => { if (e.target === ctaModal) closeCta(); });
+
+$("ctaSubmit").addEventListener("click", async () => {
+  const name = $("ctaName").value.trim();
+  const contact = $("ctaContact").value.trim();
+  const note = $("ctaNote").value.trim();
+  if (!name){ toast("请填一下姓名"); return; }
+  if (contact.length < 5){ toast("联系方式好像不太对"); return; }
+
+  const btn = $("ctaSubmit");
+  btn.disabled = true; btn.textContent = "提交中…";
+  try {
+    await saveLeadToFeishu({ name, contact, note });
+    closeCta();
+    toast("已收到 · 瑶瑶团队会尽快与你联系");
+  } catch (err){
+    console.error(err);
+    toast("提交失败，请稍后再试或截图联系瑶瑶");
+  } finally {
+    btn.disabled = false; btn.textContent = "提交";
+  }
 });
 
 function toast(msg){
